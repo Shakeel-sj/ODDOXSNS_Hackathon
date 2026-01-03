@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.name }} - Shared Itinerary{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1>{{ trip.name }}</h1>
+    <p class="text-muted">
+        <i class="bi bi-calendar"></i> {{ trip.start_date.strftime('%B %d, %Y') }} - {{ trip.end_date.strftime('%B %d, %Y') }}
+    </p>
+    {% if trip.description %}
+    <p>{{ trip.description }}</p>
+    {% endif %}
+</div>
+
+{% if current_user.is_authenticated %}
+<div class="mb-4">
+    <form method="POST" action="{{ url_for('share.copy_trip', token=share_token) }}" class="d-inline">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-copy"></i> Copy This Trip
+        </button>
+    </form>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <a href="{{ url_for('auth.login') }}">Login</a> to copy this trip to your account.
+</div>
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Share on Social Media</h5>
+    </div>
+    <div class="card-body">
+        <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.url }}" target="_blank" class="btn btn-outline-primary me-2">
+            <i class="bi bi-facebook"></i> Facebook
+        </a>
+        <a href="https://twitter.com/intent/tweet?url={{ request.url }}&text={{ trip.name }}" target="_blank" class="btn btn-outline-info me-2">
+            <i class="bi bi-twitter"></i> Twitter
+        </a>
+        <a href="https://wa.me/?text={{ trip.name }}%20{{ request.url }}" target="_blank" class="btn btn-outline-success">
+            <i class="bi bi-whatsapp"></i> WhatsApp
+        </a>
+    </div>
+</div>
+
+{% if trip.trip_stops %}
+    {% for stop in trip.trip_stops %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-geo-alt"></i> {{ stop.city.name }}, {{ stop.city.country }}
+                <small>({{ stop.arrival_date.strftime('%b %d') }} - {{ stop.departure_date.strftime('%b %d, %Y') }})</small>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% for day in stop.itinerary_days %}
+            <div class="mb-4">
+                <h6>Day {{ day.day_number }} - {{ day.date.strftime('%A, %B %d, %Y') }}</h6>
+                {% if day.activities %}
+                <div class="list-group">
+                    {% for activity in day.activities %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <div>
+                                <h6 class="mb-1">{{ activity.activity.name }}</h6>
+                                <p class="mb-1 text-muted">{{ activity.activity.description[:100] }}{% if activity.activity.description|length > 100 %}...{% endif %}</p>
+                                <small class="text-muted">
+                                    <span class="badge bg-info">{{ activity.activity.activity_type }}</span>
+                                    {% if activity.start_time %}
+                                    <i class="bi bi-clock"></i> {{ activity.start_time.strftime('%I:%M %p') }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No activities planned for this day.</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="alert alert-info">
+    <p>No itinerary available for this trip.</p>
+</div>
+{% endif %}
+{% endblock %}
+

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}My Trips - GlobeTrotter{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>My Trips</h1>
+    <a href="{{ url_for('trips.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Trip
+    </a>
+</div>
+
+<!-- Filter Tabs -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {{ 'active' if status_filter == 'all' else '' }}" href="{{ url_for('trips.list', status='all') }}">All</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ 'active' if status_filter == 'upcoming' else '' }}" href="{{ url_for('trips.list', status='upcoming') }}">Upcoming</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ 'active' if status_filter == 'ongoing' else '' }}" href="{{ url_for('trips.list', status='ongoing') }}">Ongoing</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ 'active' if status_filter == 'completed' else '' }}" href="{{ url_for('trips.list', status='completed') }}">Completed</a>
+    </li>
+</ul>
+
+{% if trips %}
+<div class="row">
+    {% for trip in trips %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            {% if trip.cover_image_url %}
+            <img src="{{ trip.cover_image_url }}" class="card-img-top" alt="{{ trip.name }}" style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                <i class="bi bi-image text-white" style="font-size: 3rem;"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ trip.name }}</h5>
+                <p class="card-text text-muted">{{ trip.description[:100] }}{% if trip.description|length > 100 %}...{% endif %}</p>
+                <p class="card-text">
+                    <small class="text-muted">
+                        <i class="bi bi-calendar"></i> {{ trip.start_date.strftime('%b %d, %Y') }} - {{ trip.end_date.strftime('%b %d, %Y') }}
+                    </small>
+                </p>
+                <span class="badge bg-{{ 'success' if trip.status == 'Upcoming' else 'warning' if trip.status == 'Ongoing' else 'secondary' }}">{{ trip.status }}</span>
+            </div>
+            <div class="card-footer bg-white">
+                <div class="btn-group w-100" role="group">
+                    <a href="{{ url_for('trips.view', id=trip.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                    <a href="{{ url_for('trips.edit', id=trip.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                    <form method="POST" action="{{ url_for('trips.delete', id=trip.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this trip?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <h5>No trips found</h5>
+    <p>Start planning your adventure by creating your first trip!</p>
+    <a href="{{ url_for('trips.create') }}" class="btn btn-primary">Create Trip</a>
+</div>
+{% endif %}
+{% endblock %}
+

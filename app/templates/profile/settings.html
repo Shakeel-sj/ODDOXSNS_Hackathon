@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Profile Settings - GlobeTrotter{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Profile Settings</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Personal Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.full_name.label(class="form-label") }}
+                        {{ form.full_name(class="form-control") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.email.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label") }}
+                        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.username.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.language_preference.label(class="form-label") }}
+                        {{ form.language_preference(class="form-select") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.avatar.label(class="form-label") }}
+                        {{ form.avatar(class="form-control") }}
+                        {% if current_user.avatar_url %}
+                        <small class="form-text text-muted">Current: <img src="{{ current_user.avatar_url }}" alt="Avatar" class="rounded-circle" style="width: 50px; height: 50px;"></small>
+                        {% endif %}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Update Profile</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Danger Zone</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Once you delete your account, there is no going back. Please be certain.</p>
+                <form method="POST" action="{{ url_for('profile.delete_account') }}" onsubmit="return confirm('Are you absolutely sure you want to delete your account? This action cannot be undone.');">
+                    <button type="submit" class="btn btn-danger">Delete Account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Saved Destinations</h5>
+            </div>
+            <div class="card-body">
+                {% if saved_destinations %}
+                <div class="list-group">
+                    {% for city in saved_destinations %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">{{ city.name }}</h6>
+                            <small class="text-muted">{{ city.country }}</small>
+                        </div>
+                        <form method="POST" action="{{ url_for('profile.remove_saved_destination', city_id=city.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No saved destinations yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
