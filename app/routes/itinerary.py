@@ -15,7 +15,14 @@ def builder(trip_id):
         flash('You do not have permission to view this trip.', 'danger')
         return redirect(url_for('trips.list'))
     
-    return render_template('itinerary/builder.html', trip=trip)
+    # Get initial data for better UX (optional - for showing popular cities/activities)
+    popular_cities = City.query.order_by(City.name).limit(10).all()
+    popular_activities = Activity.query.order_by(Activity.name).limit(10).all()
+    
+    return render_template('itinerary/builder.html', 
+                         trip=trip, 
+                         popular_cities=popular_cities,
+                         popular_activities=popular_activities)
 
 @bp.route('/api/cities', methods=['GET'])
 @login_required
@@ -37,11 +44,17 @@ def api_cities():
     
     cities = query.order_by(City.name).limit(limit).all()
     
+    if not cities and not search:
+        # If no search term and no results, return empty array
+        return jsonify([])
+    
     return jsonify([{
         'id': city.id,
         'name': city.name,
         'country': city.country,
         'region': city.region or '',
+        'cost_index': float(city.cost_index) if city.cost_index else None,
+        'description': city.description or '',
         'display': f"{city.name}, {city.country}"
     } for city in cities])
 
