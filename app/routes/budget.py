@@ -94,10 +94,6 @@ def add_expense(trip_id):
     if not data:
         return jsonify({'error': 'No data provided'}), 400
     
-    # Convert date string to date object
-    if 'date' in data:
-        data['date'] = datetime.strptime(data['date'], '%Y-%m-%d').date()
-    
     form = BudgetExpenseForm(data=data)
     if form.validate():
         expense = BudgetExpense(

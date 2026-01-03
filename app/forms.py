@@ -84,6 +84,9 @@ class BudgetForm(FlaskForm):
     other_budget = DecimalField('Other Budget', validators=[Optional(), NumberRange(min=0)])
 
 class BudgetExpenseForm(FlaskForm):
+    class Meta:
+        csrf = False  # REQUIRED for JSON/API usage
+
     category = SelectField('Category', choices=[
         ('Transport', 'Transport'),
         ('Accommodation', 'Accommodation'),
