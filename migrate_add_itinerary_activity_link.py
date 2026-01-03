@@ -27,4 +27,3 @@ with app.app_context():
         print(f"Migration error: {str(e)}")
         print("If you're using SQLite, you may need to recreate the database.")
         print("Run: python init_db.py (this will recreate all tables)")
-

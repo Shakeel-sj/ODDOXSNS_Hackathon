@@ -15,13 +15,74 @@ def builder(trip_id):
         flash('You do not have permission to view this trip.', 'danger')
         return redirect(url_for('trips.list'))
     
-    # Get all cities for dropdown
-    cities = City.query.order_by(City.name).all()
+    return render_template('itinerary/builder.html', trip=trip)
+
+@bp.route('/api/cities', methods=['GET'])
+@login_required
+def api_cities():
+    """API endpoint to fetch cities with search"""
+    search = request.args.get('search', '').strip()
+    limit = request.args.get('limit', 50, type=int)
     
-    # Get all activities for dropdown
-    activities = Activity.query.order_by(Activity.name).all()
+    query = City.query
     
-    return render_template('itinerary/builder.html', trip=trip, cities=cities, activities=activities)
+    if search:
+        from sqlalchemy import or_
+        search_term = f"%{search}%"
+        query = query.filter(or_(
+            City.name.ilike(search_term),
+            City.country.ilike(search_term),
+            City.region.ilike(search_term)
+        ))
+    
+    cities = query.order_by(City.name).limit(limit).all()
+    
+    return jsonify([{
+        'id': city.id,
+        'name': city.name,
+        'country': city.country,
+        'region': city.region or '',
+        'display': f"{city.name}, {city.country}"
+    } for city in cities])
+
+@bp.route('/api/activities', methods=['GET'])
+@login_required
+def api_activities():
+    """API endpoint to fetch activities with search and filters"""
+    search = request.args.get('search', '').strip()
+    city_id = request.args.get('city_id', type=int)
+    activity_type = request.args.get('activity_type', '').strip()
+    limit = request.args.get('limit', 50, type=int)
+    
+    query = Activity.query
+    
+    if search:
+        from sqlalchemy import or_
+        search_term = f"%{search}%"
+        query = query.filter(or_(
+            Activity.name.ilike(search_term),
+            Activity.description.ilike(search_term)
+        ))
+    
+    if city_id:
+        query = query.filter(Activity.city_id == city_id)
+    
+    if activity_type:
+        query = query.filter(Activity.activity_type == activity_type)
+    
+    activities = query.order_by(Activity.name).limit(limit).all()
+    
+    return jsonify([{
+        'id': activity.id,
+        'name': activity.name,
+        'description': activity.description or '',
+        'activity_type': activity.activity_type or '',
+        'duration_hours': float(activity.duration_hours) if activity.duration_hours else None,
+        'estimated_cost': float(activity.estimated_cost) if activity.estimated_cost else None,
+        'city_id': activity.city_id,
+        'city_name': activity.city.name if activity.city else None,
+        'display': f"{activity.name}{' (' + activity.activity_type + ')' if activity.activity_type else ''}{' - ' + activity.city.name if activity.city else ''}"
+    } for activity in activities])
 
 @bp.route('/trip/<int:trip_id>/view')
 @login_required
