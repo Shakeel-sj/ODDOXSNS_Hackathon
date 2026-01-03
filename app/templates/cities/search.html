@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Search Cities - GlobeTrotter{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Search Cities</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('cities.search') }}">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form.query.label(class="form-label") }}
+                    {{ form.query(class="form-control", placeholder="Search by name, country, or region") }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.country.label(class="form-label") }}
+                    {{ form.country(class="form-control", placeholder="Filter by country") }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.region.label(class="form-label") }}
+                    {{ form.region(class="form-control", placeholder="Filter by region") }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="{{ url_for('cities.search') }}" class="btn btn-secondary">Clear</a>
+        </form>
+    </div>
+</div>
+
+{% if cities.items %}
+<div class="row">
+    {% for city in cities.items %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ city.name }}</h5>
+                <p class="card-text text-muted">
+                    <i class="bi bi-geo-alt"></i> {{ city.country }}{% if city.region %}, {{ city.region }}{% endif %}
+                </p>
+                {% if city.cost_index %}
+                <p class="card-text">
+                    <small class="text-muted">Cost Index: {{ "%.2f"|format(city.cost_index) }}</small>
+                </p>
+                {% endif %}
+                {% if city.description %}
+                <p class="card-text">{{ city.description[:100] }}{% if city.description|length > 100 %}...{% endif %}</p>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white">
+                <button class="btn btn-sm btn-outline-primary" onclick="saveCity({{ city.id }})" id="save-btn-{{ city.id }}">
+                    <i class="bi bi-{{ 'bookmark-fill' if city.id in saved_city_ids else 'bookmark' }}"></i>
+                    {{ 'Saved' if city.id in saved_city_ids else 'Save' }}
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+<nav>
+    <ul class="pagination justify-content-center">
+        {% if cities.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('cities.search', page=cities.prev_num, query=form.query.data, country=form.country.data, region=form.region.data) }}">Previous</a>
+        </li>
+        {% endif %}
+        {% for page_num in cities.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                {% if page_num == cities.page %}
+                <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('cities.search', page=page_num, query=form.query.data, country=form.country.data, region=form.region.data) }}">{{ page_num }}</a>
+                </li>
+                {% endif %}
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if cities.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('cities.search', page=cities.next_num, query=form.query.data, country=form.country.data, region=form.region.data) }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% else %}
+<div class="alert alert-info">
+    <p>No cities found. Try adjusting your search criteria.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function saveCity(cityId) {
+        const btn = document.getElementById(`save-btn-${cityId}`);
+        const isSaved = btn.innerHTML.includes('Saved');
+        
+        const url = isSaved ? `/cities/${cityId}/unsave` : `/cities/${cityId}/save`;
+        const response = await fetch(url, {method: 'POST'});
+        
+        if (response.ok) {
+            location.reload();
+        }
+    }
+</script>
+{% endblock %}
+

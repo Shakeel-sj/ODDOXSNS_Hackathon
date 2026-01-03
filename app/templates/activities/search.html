@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Search Activities - GlobeTrotter{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Search Activities</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('activities.search') }}">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    {{ form.query.label(class="form-label") }}
+                    {{ form.query(class="form-control", placeholder="Search activities") }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    {{ form.activity_type.label(class="form-label") }}
+                    {{ form.activity_type(class="form-select") }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    {{ form.min_cost.label(class="form-label") }}
+                    {{ form.min_cost(class="form-control", type="number", step="0.01", placeholder="Min") }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    {{ form.max_cost.label(class="form-label") }}
+                    {{ form.max_cost(class="form-control", type="number", step="0.01", placeholder="Max") }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    {{ form.max_duration.label(class="form-label") }}
+                    {{ form.max_duration(class="form-control", type="number", step="0.5", placeholder="Hours") }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="{{ url_for('activities.search') }}" class="btn btn-secondary">Clear</a>
+        </form>
+    </div>
+</div>
+
+{% if activities.items %}
+<div class="row">
+    {% for activity in activities.items %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            {% if activity.image_url %}
+            <img src="{{ activity.image_url }}" class="card-img-top" alt="{{ activity.name }}" style="height: 200px; object-fit: cover;">
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ activity.name }}</h5>
+                <p class="card-text">
+                    <span class="badge bg-info">{{ activity.activity_type }}</span>
+                </p>
+                {% if activity.description %}
+                <p class="card-text">{{ activity.description[:100] }}{% if activity.description|length > 100 %}...{% endif %}</p>
+                {% endif %}
+                <div class="d-flex justify-content-between text-muted">
+                    {% if activity.duration_hours %}
+                    <small><i class="bi bi-hourglass-split"></i> {{ activity.duration_hours }}h</small>
+                    {% endif %}
+                    {% if activity.estimated_cost %}
+                    <small><i class="bi bi-cash"></i> ₹{{ "%.2f"|format(activity.estimated_cost) }}</small>
+                    {% endif %}
+                </div>
+                {% if activity.city %}
+                <p class="card-text">
+                    <small class="text-muted"><i class="bi bi-geo-alt"></i> {{ activity.city.name }}</small>
+                </p>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white">
+                <button class="btn btn-sm btn-outline-primary" onclick="viewActivity({{ activity.id }})">
+                    <i class="bi bi-eye"></i> View Details
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+<nav>
+    <ul class="pagination justify-content-center">
+        {% if activities.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('activities.search', page=activities.prev_num) }}">Previous</a>
+        </li>
+        {% endif %}
+        {% for page_num in activities.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                {% if page_num == activities.page %}
+                <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('activities.search', page=page_num) }}">{{ page_num }}</a>
+                </li>
+                {% endif %}
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if activities.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('activities.search', page=activities.next_num) }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% else %}
+<div class="alert alert-info">
+    <p>No activities found. Try adjusting your search criteria.</p>
+</div>
+{% endif %}
+
+<!-- Activity Detail Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="activityModalTitle">Activity Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="activityModalBody">
+                <!-- Content loaded via JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function viewActivity(activityId) {
+        const response = await fetch(`/activities/${activityId}`);
+        const activity = await response.json();
+        
+        document.getElementById('activityModalTitle').textContent = activity.name;
+        document.getElementById('activityModalBody').innerHTML = `
+            <p><strong>Type:</strong> ${activity.activity_type}</p>
+            ${activity.description ? `<p>${activity.description}</p>` : ''}
+            ${activity.duration_hours ? `<p><strong>Duration:</strong> ${activity.duration_hours} hours</p>` : ''}
+            ${activity.estimated_cost ? `<p><strong>Estimated Cost:</strong> ₹${activity.estimated_cost.toFixed(2)}</p>` : ''}
+            ${activity.city ? `<p><strong>City:</strong> ${activity.city}</p>` : ''}
+        `;
+        
+        new bootstrap.Modal(document.getElementById('activityModal')).show();
+    }
+</script>
+{% endblock %}
+

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - GlobeTrotter{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Admin Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Total Users</h5>
+                <h2 class="text-primary">{{ total_users }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Total Trips</h5>
+                <h2 class="text-success">{{ total_trips }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">New Users (30d)</h5>
+                <h2 class="text-info">{{ new_users }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">New Trips (30d)</h5>
+                <h2 class="text-warning">{{ new_trips }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Popular Cities</h5>
+            </div>
+            <div class="card-body">
+                {% if popular_cities %}
+                <div class="list-group">
+                    {% for city, usage_count in popular_cities %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">{{ city.name }}</h6>
+                            <small class="text-muted">{{ city.country }}</small>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">{{ usage_count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Popular Activities</h5>
+            </div>
+            <div class="card-body">
+                {% if popular_activities %}
+                <div class="list-group">
+                    {% for activity, usage_count in popular_activities %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">{{ activity.name }}</h6>
+                            <small class="text-muted">{{ activity.activity_type }}</small>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">{{ usage_count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Quick Actions</h5>
+    </div>
+    <div class="card-body">
+        <a href="{{ url_for('admin.users') }}" class="btn btn-primary">
+            <i class="bi bi-people"></i> Manage Users
+        </a>
+    </div>
+</div>
+{% endblock %}
+
