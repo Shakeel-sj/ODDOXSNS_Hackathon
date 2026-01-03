@@ -185,6 +185,10 @@ class BudgetExpense(db.Model):
     description = db.Column(db.String(255))
     date = db.Column(db.Date, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    itinerary_activity_id = db.Column(db.Integer, db.ForeignKey('itinerary_activities.id', ondelete='CASCADE'), nullable=True)
+    
+    # Relationships
+    itinerary_activity = db.relationship('ItineraryActivity', backref='budget_expense', uselist=False)
     
     def __repr__(self):
         return f'<BudgetExpense {self.category}: {self.amount}>'
