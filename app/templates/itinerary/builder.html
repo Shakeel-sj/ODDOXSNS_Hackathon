@@ -15,25 +15,6 @@
         margin: 5px 0;
         border-radius: 5px;
     }
-    #cityResults, #activityResults {
-        border: 1px solid #ced4da;
-        border-radius: 0.375rem;
-        background: white;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    }
-    .list-group-item {
-        cursor: pointer;
-    }
-    .list-group-item:hover {
-        background-color: #f8f9fa;
-    }
-    .selected-city, .selected-activity {
-        background-color: #e7f3ff;
-        padding: 5px 10px;
-        border-radius: 4px;
-        margin-top: 5px;
-        display: none;
-    }
 </style>
 {% endblock %}
 
@@ -111,13 +92,14 @@
             </div>
             <form id="addCityForm">
                 <div class="modal-body">
-                    <div class="mb-3 position-relative">
+                    <div class="mb-3">
                         <label class="form-label">City</label>
-                        <input type="text" class="form-control" id="citySearch" placeholder="Search for a city..." autocomplete="off" required>
-                        <input type="hidden" id="citySelect" required>
-                        <div id="cityResults" class="list-group position-absolute w-100" style="max-height: 300px; overflow-y: auto; z-index: 1000; display: none; top: 100%;"></div>
-                        <small class="form-text text-muted">Start typing to search cities (e.g., "Paris", "Tokyo", "New York")</small>
-                        <div id="selectedCityInfo" class="selected-city mt-2"></div>
+                        <select class="form-select" id="citySelect" required>
+                            <option value="">Select a city...</option>
+                            {% for city in cities %}
+                            <option value="{{ city.id }}">{{ city.name }}, {{ city.country }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Arrival Date</label>
@@ -152,25 +134,23 @@
             <form id="addActivityForm">
                 <input type="hidden" id="dayIdInput">
                 <div class="modal-body">
-                    <div class="mb-3 position-relative">
-                        <label class="form-label">Select Activity</label>
-                        <input type="text" class="form-control" id="activitySearch" placeholder="Search for an activity..." autocomplete="off" required>
-                        <input type="hidden" id="activitySelect" required>
-                        <div id="activityResults" class="list-group position-absolute w-100" style="max-height: 200px; overflow-y: auto; z-index: 1000; display: none; top: 100%;"></div>
-                        <small class="form-text text-muted" id="activityInfo">Start typing to search activities</small>
-                    </div>
-                    <div class="mb-3 position-relative">
-                        <label class="form-label">Filter by City (Optional)</label>
-                        <input type="text" class="form-control" id="activityCityFilter" placeholder="Search city to filter activities..." autocomplete="off">
-                        <input type="hidden" id="activityCityId">
-                        <div id="activityCityResults" class="list-group position-absolute w-100" style="max-height: 200px; overflow-y: auto; z-index: 1000; display: none; top: 100%;"></div>
-                        <small class="form-text text-muted">Type to search and filter activities by city</small>
-                    </div>
                     <div class="mb-3">
-                        <label class="form-label">Filter by Type (Optional)</label>
-                        <select class="form-select" id="activityTypeFilter">
-                            <option value="">All Types</option>
+                        <label class="form-label">Select Activity</label>
+                        <select class="form-select" id="activitySelect" required>
+                            <option value="">Choose an activity...</option>
+                            {% for activity in activities %}
+                            <option value="{{ activity.id }}" 
+                                    data-type="{{ activity.activity_type }}"
+                                    data-duration="{{ activity.duration_hours or '' }}"
+                                    data-cost="{{ activity.estimated_cost or '' }}"
+                                    data-description="{{ activity.description or '' }}">
+                                {{ activity.name }} 
+                                {% if activity.activity_type %}({{ activity.activity_type }}){% endif %}
+                                {% if activity.city %} - {{ activity.city.name }}{% endif %}
+                            </option>
+                            {% endfor %}
                         </select>
+                        <small class="form-text text-muted" id="activityInfo"></small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Start Time</label>
@@ -246,7 +226,6 @@
                 }
                 // Reset form
                 document.getElementById('addCityForm').reset();
-                document.getElementById('selectedCityInfo').style.display = 'none';
                 // Reload page to show new city
                 location.reload();
             } else {
@@ -267,318 +246,38 @@
         }
     }
     
-    // Dynamic city search
-    let citySearchTimeout;
-    const citySearchInput = document.getElementById('citySearch');
-    const cityResults = document.getElementById('cityResults');
-    const citySelect = document.getElementById('citySelect');
-    
-    citySearchInput.addEventListener('input', function(e) {
-        clearTimeout(citySearchTimeout);
-        const searchTerm = e.target.value.trim();
-        
-        if (searchTerm.length < 1) {
-            cityResults.style.display = 'none';
-            citySelect.value = '';
-            document.getElementById('selectedCityInfo').style.display = 'none';
-            return;
-        }
-        
-        citySearchTimeout = setTimeout(async () => {
-            try {
-                const url = searchTerm.length >= 1 
-                    ? `/itinerary/api/cities?search=${encodeURIComponent(searchTerm)}`
-                    : `/itinerary/api/cities?limit=20`;
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    console.error('API error:', response.status, response.statusText);
-                    cityResults.innerHTML = '<div class="list-group-item text-danger">Error loading cities. Please try again.</div>';
-                    cityResults.style.display = 'block';
-                    return;
-                }
-                
-                const cities = await response.json();
-                
-                cityResults.innerHTML = '';
-                if (cities.length === 0) {
-                    cityResults.innerHTML = '<div class="list-group-item text-muted">No cities found. Try a different search term.</div>';
-                } else {
-                    cities.forEach(city => {
-                        const item = document.createElement('div');
-                        item.className = 'list-group-item list-group-item-action';
-                        item.innerHTML = `
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <strong>${city.name}</strong>
-                                    <br>
-                                    <small class="text-muted">${city.country}${city.region ? ', ' + city.region : ''}</small>
-                                    ${city.description ? `<br><small class="text-muted">${city.description.substring(0, 80)}${city.description.length > 80 ? '...' : ''}</small>` : ''}
-                                </div>
-                                ${city.cost_index ? `<span class="badge bg-info">Cost: ${city.cost_index.toFixed(1)}</span>` : ''}
-                            </div>
-                        `;
-                        item.onclick = () => {
-                            citySearchInput.value = city.display;
-                            citySelect.value = city.id;
-                            cityResults.style.display = 'none';
-                            showCityInfo(city);
-                        };
-                        cityResults.appendChild(item);
-                    });
-                }
-                cityResults.style.display = 'block';
-            } catch (error) {
-                console.error('Error fetching cities:', error);
-                cityResults.innerHTML = '<div class="list-group-item text-danger">Network error. Please check your connection.</div>';
-                cityResults.style.display = 'block';
-            }
-        }, 300);
-    });
-    
-    // Show popular cities when input is focused
-    citySearchInput.addEventListener('focus', async function() {
-        if (citySearchInput.value.trim().length === 0) {
-            try {
-                const response = await fetch('/itinerary/api/cities?limit=10');
-                if (response.ok) {
-                    const cities = await response.json();
-                    if (cities.length > 0) {
-                        cityResults.innerHTML = '<div class="list-group-item text-muted fw-bold">Popular Cities:</div>';
-                        cities.forEach(city => {
-                            const item = document.createElement('div');
-                            item.className = 'list-group-item list-group-item-action';
-                            item.innerHTML = `
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <strong>${city.name}</strong>
-                                        <br>
-                                        <small class="text-muted">${city.country}${city.region ? ', ' + city.region : ''}</small>
-                                    </div>
-                                    ${city.cost_index ? `<span class="badge bg-info">Cost: ${city.cost_index.toFixed(1)}</span>` : ''}
-                                </div>
-                            `;
-                            item.onclick = () => {
-                                citySearchInput.value = city.display;
-                                citySelect.value = city.id;
-                                cityResults.style.display = 'none';
-                                showCityInfo(city);
-                            };
-                            cityResults.appendChild(item);
-                        });
-                        cityResults.style.display = 'block';
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading popular cities:', error);
-            }
-        }
-    });
-    
-    function showCityInfo(city) {
-        const infoDiv = document.getElementById('selectedCityInfo');
-        if (city) {
-            let info = `<strong>${city.name}, ${city.country}</strong>`;
-            if (city.region) info += ` (${city.region})`;
-            if (city.cost_index) info += ` • Cost Index: ${city.cost_index.toFixed(1)}`;
-            if (city.description) info += `<br><small>${city.description}</small>`;
-            infoDiv.innerHTML = info;
-            infoDiv.style.display = 'block';
-        } else {
-            infoDiv.style.display = 'none';
-        }
-    }
-    
-    // Hide results when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!citySearchInput.contains(e.target) && !cityResults.contains(e.target)) {
-            cityResults.style.display = 'none';
-        }
-        if (!document.getElementById('activitySearch').contains(e.target) && !document.getElementById('activityResults').contains(e.target)) {
-            document.getElementById('activityResults').style.display = 'none';
-        }
-    });
-    
-    // Dynamic activity search
-    let activitySearchTimeout;
-    const activitySearchInput = document.getElementById('activitySearch');
-    const activityResults = document.getElementById('activityResults');
-    const activitySelect = document.getElementById('activitySelect');
-    const activityCityFilter = document.getElementById('activityCityFilter');
-    const activityCityId = document.getElementById('activityCityId');
-    const activityTypeFilter = document.getElementById('activityTypeFilter');
-    
-    // Load activity types for filter
-    async function loadActivityTypes() {
-        try {
-            const response = await fetch('/itinerary/api/activities?limit=1000');
-            const activities = await response.json();
-            const types = [...new Set(activities.map(a => a.activity_type).filter(t => t))].sort();
-            activityTypeFilter.innerHTML = '<option value="">All Types</option>';
-            types.forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type;
-                activityTypeFilter.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Error loading activity types:', error);
-        }
-    }
-    loadActivityTypes();
-    
-    // City filter for activities
-    const activityCityResults = document.getElementById('activityCityResults');
-    let cityFilterTimeout;
-    activityCityFilter.addEventListener('input', function(e) {
-        clearTimeout(cityFilterTimeout);
-        const searchTerm = e.target.value.trim();
-        
-        if (searchTerm.length < 2) {
-            activityCityId.value = '';
-            activityCityResults.style.display = 'none';
-            loadActivities();
-            return;
-        }
-        
-        cityFilterTimeout = setTimeout(async () => {
-            try {
-                const response = await fetch(`/itinerary/api/cities?search=${encodeURIComponent(searchTerm)}`);
-                const cities = await response.json();
-                
-                activityCityResults.innerHTML = '';
-                if (cities.length === 0) {
-                    activityCityResults.innerHTML = '<div class="list-group-item text-muted">No cities found</div>';
-                } else {
-                    cities.forEach(city => {
-                        const item = document.createElement('div');
-                        item.className = 'list-group-item list-group-item-action';
-                        item.innerHTML = `
-                            <div><strong>${city.name}</strong></div>
-                            <small class="text-muted">${city.country}${city.region ? ', ' + city.region : ''}</small>
-                        `;
-                        item.onclick = () => {
-                            activityCityFilter.value = `${city.name}, ${city.country}`;
-                            activityCityId.value = city.id;
-                            activityCityResults.style.display = 'none';
-                            loadActivities();
-                        };
-                        activityCityResults.appendChild(item);
-                    });
-                }
-                activityCityResults.style.display = 'block';
-            } catch (error) {
-                console.error('Error fetching cities for filter:', error);
-            }
-        }, 300);
-    });
-    
-    // Hide city filter results when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!activityCityFilter.contains(e.target) && !activityCityResults.contains(e.target)) {
-            activityCityResults.style.display = 'none';
-        }
-    });
-    
-    activityTypeFilter.addEventListener('change', loadActivities);
-    
-    async function loadActivities() {
-        const searchTerm = activitySearchInput.value.trim();
-        if (searchTerm.length < 2) {
-            activityResults.style.display = 'none';
-            return;
-        }
-        
-        let url = `/itinerary/api/activities?search=${encodeURIComponent(searchTerm)}`;
-        if (activityCityId.value) {
-            url += `&city_id=${activityCityId.value}`;
-        }
-        if (activityTypeFilter.value) {
-            url += `&activity_type=${encodeURIComponent(activityTypeFilter.value)}`;
-        }
-        
-        try {
-            const response = await fetch(url);
-            const activities = await response.json();
-            
-            activityResults.innerHTML = '';
-            if (activities.length === 0) {
-                activityResults.innerHTML = '<div class="list-group-item text-muted">No activities found</div>';
-            } else {
-                activities.forEach(activity => {
-                    const item = document.createElement('div');
-                    item.className = 'list-group-item list-group-item-action';
-                    item.innerHTML = `
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <div><strong>${activity.name}</strong></div>
-                                <small class="text-muted">
-                                    ${activity.activity_type ? activity.activity_type : ''}
-                                    ${activity.city_name ? ' • ' + activity.city_name : ''}
-                                </small>
-                                ${activity.description ? `<br><small class="text-muted">${activity.description.substring(0, 80)}${activity.description.length > 80 ? '...' : ''}</small>` : ''}
-                                <div class="mt-1">
-                                    ${activity.duration_hours ? `<span class="badge bg-secondary me-1">${activity.duration_hours}h</span>` : ''}
-                                    ${activity.estimated_cost ? `<span class="badge bg-success">₹${parseFloat(activity.estimated_cost).toFixed(2)}</span>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    item.onclick = () => {
-                        activitySearchInput.value = activity.name;
-                        activitySelect.value = activity.id;
-                        activityResults.style.display = 'none';
-                        showActivityInfo(activity);
-                    };
-                    activityResults.appendChild(item);
-                });
-            }
-            activityResults.style.display = 'block';
-        } catch (error) {
-            console.error('Error fetching activities:', error);
-        }
-    }
-    
-    activitySearchInput.addEventListener('input', function(e) {
-        clearTimeout(activitySearchTimeout);
-        const searchTerm = e.target.value.trim();
-        
-        if (searchTerm.length < 2) {
-            activityResults.style.display = 'none';
-            activitySelect.value = '';
-            document.getElementById('activityInfo').textContent = 'Start typing to search activities';
-            return;
-        }
-        
-        activitySearchTimeout = setTimeout(loadActivities, 300);
-    });
-    
-    function showActivityInfo(activity) {
-        const infoDiv = document.getElementById('activityInfo');
-        let info = [];
-        if (activity.activity_type) info.push(`Type: ${activity.activity_type}`);
-        if (activity.duration_hours) info.push(`Duration: ${activity.duration_hours}h`);
-        if (activity.estimated_cost) info.push(`Estimated: ₹${parseFloat(activity.estimated_cost).toFixed(2)}`);
-        if (activity.city_name) info.push(`Location: ${activity.city_name}`);
-        
-        infoDiv.innerHTML = `<strong>${info.join(' • ')}</strong>`;
-        if (activity.description) {
-            infoDiv.innerHTML += `<br><small class="text-muted">${activity.description}</small>`;
-        }
-    }
-    
     function openAddActivityModal(dayId) {
         document.getElementById('dayIdInput').value = dayId;
         // Reset form when opening modal
         document.getElementById('addActivityForm').reset();
-        document.getElementById('activityInfo').textContent = 'Start typing to search activities';
-        activitySelect.value = '';
-        activityCityId.value = '';
-        activityCityFilter.value = '';
-        activityCityResults.style.display = 'none';
-        activityResults.style.display = 'none';
+        document.getElementById('activityInfo').textContent = '';
         new bootstrap.Modal(document.getElementById('addActivityModal')).show();
     }
+    
+    // Show activity info when selected
+    document.getElementById('activitySelect').addEventListener('change', function(e) {
+        const selectedOption = e.target.options[e.target.selectedIndex];
+        const infoDiv = document.getElementById('activityInfo');
+        
+        if (selectedOption.value) {
+            const type = selectedOption.getAttribute('data-type');
+            const duration = selectedOption.getAttribute('data-duration');
+            const cost = selectedOption.getAttribute('data-cost');
+            const description = selectedOption.getAttribute('data-description');
+            
+            let info = [];
+            if (type) info.push(`Type: ${type}`);
+            if (duration) info.push(`Duration: ${duration}h`);
+            if (cost) info.push(`Estimated: ₹${parseFloat(cost).toFixed(2)}`);
+            
+            infoDiv.textContent = info.join(' • ');
+            if (description) {
+                infoDiv.textContent += ` | ${description.substring(0, 100)}${description.length > 100 ? '...' : ''}`;
+            }
+        } else {
+            infoDiv.textContent = '';
+        }
+    });
     
     document.getElementById('addActivityForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -616,9 +315,7 @@
                 }
                 // Reset form
                 document.getElementById('addActivityForm').reset();
-                document.getElementById('activityInfo').textContent = 'Start typing to search activities';
-                activitySelect.value = '';
-                activityCityId.value = '';
+                document.getElementById('activityInfo').textContent = '';
                 // Reload page to show new activity
                 location.reload();
             } else {
