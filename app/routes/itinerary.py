@@ -27,36 +27,40 @@ def builder(trip_id):
 @bp.route('/api/cities', methods=['GET'])
 @login_required
 def api_cities():
-    """API endpoint to fetch cities with search"""
     search = request.args.get('search', '').strip()
     limit = request.args.get('limit', 50, type=int)
-    
-    query = City.query
-    
-    if search:
-        from sqlalchemy import or_
-        search_term = f"%{search}%"
-        query = query.filter(or_(
-            City.name.ilike(search_term),
-            City.country.ilike(search_term),
-            City.region.ilike(search_term)
-        ))
-    
-    cities = query.order_by(City.name).limit(limit).all()
-    
-    if not cities and not search:
-        # If no search term and no results, return empty array
+
+    if not search:
         return jsonify([])
-    
-    return jsonify([{
-        'id': city.id,
-        'name': city.name,
-        'country': city.country,
-        'region': city.region or '',
-        'cost_index': float(city.cost_index) if city.cost_index else None,
-        'description': city.description or '',
-        'display': f"{city.name}, {city.country}"
-    } for city in cities])
+
+    url = "https://wft-geo-db.p.rapidapi.com/v1/geo/cities"
+    headers = {
+        "X-RapidAPI-Key": "875c29fd44msh1d8142d7ed22fc9p11eff0jsn22355115b1b7",
+        "X-RapidAPI-Host": "wft-geo-db.p.rapidapi.com"
+    }
+    params = {
+        "namePrefix": search,
+        "limit": limit,
+        "sort": "name"
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+    data = response.json()
+
+    cities = data.get("data", [])
+
+    return jsonify([
+        {
+            "id": city.get("id"),
+            "name": city.get("name"),
+            "country": city.get("country"),
+            "region": city.get("region", ""),
+            "cost_index": None,          # not provided by free APIs
+            "description": "",           # optional enrichment later
+            "display": f"{city.get('name')}, {city.get('country')}"
+        }
+        for city in cities
+    ])
 
 @bp.route('/api/activities', methods=['GET'])
 @login_required

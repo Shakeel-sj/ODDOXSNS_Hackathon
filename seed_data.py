@@ -12,29 +12,43 @@ def seed_data():
         # db.drop_all()
         # db.create_all()
         
-        # Create admin user
-        admin = User(
-            email='admin@globetrotter.com',
-            username='admin',
-            password_hash=generate_password_hash('admin123'),
-            full_name='Admin User',
-            role='Admin'
-        )
-        db.session.add(admin)
-        
-        # Create regular users
-        users = []
-        for i in range(1, 6):
-            user = User(
-                email=f'user{i}@example.com',
-                username=f'user{i}',
-                password_hash=generate_password_hash('password123'),
-                full_name=f'User {i}'
+        # Create admin user if it doesn't exist
+        admin = User.query.filter_by(email='admin@globetrotter.com').first()
+        if not admin:
+            admin = User(
+                email='admin@globetrotter.com',
+                username='admin',
+                password_hash=generate_password_hash('admin123'),
+                full_name='Admin User',
+                role='Admin'
             )
-            users.append(user)
-            db.session.add(user)
+            db.session.add(admin)
+            db.session.commit()
+            print("Created admin user")
+        else:
+            print("Admin user already exists")
+        
+        # Refresh admin from database
+        admin = User.query.filter_by(email='admin@globetrotter.com').first()
+        
+        # Create regular users if they don't exist
+        users = [admin]  # Start with admin
+        for i in range(1, 6):
+            existing_user = User.query.filter_by(email=f'user{i}@example.com').first()
+            if not existing_user:
+                user = User(
+                    email=f'user{i}@example.com',
+                    username=f'user{i}',
+                    password_hash=generate_password_hash('password123'),
+                    full_name=f'User {i}'
+                )
+                users.append(user)
+                db.session.add(user)
+            else:
+                users.append(existing_user)
         
         db.session.commit()
+        print(f"Users ready: {len(users)} users available")
         
         # Create cities
         cities_data = [
@@ -62,11 +76,20 @@ def seed_data():
         
         cities = []
         for city_data in cities_data:
-            city = City(**city_data)
-            cities.append(city)
-            db.session.add(city)
+            # Check if city already exists
+            existing_city = City.query.filter_by(
+                name=city_data['name'],
+                country=city_data['country']
+            ).first()
+            if not existing_city:
+                city = City(**city_data)
+                cities.append(city)
+                db.session.add(city)
+            else:
+                cities.append(existing_city)
         
         db.session.commit()
+        print(f"Cities ready: {len(cities)} cities available")
         
         # Create activities
         activities_data = [
@@ -99,65 +122,85 @@ def seed_data():
             {'name': 'Cooking Class', 'description': 'Learn local cuisine', 'activity_type': 'Food', 'duration_hours': 3.0, 'estimated_cost': 60.0},
         ]
         
+        activities_created = 0
         for activity_data in activities_data:
-            activity = Activity(**activity_data)
-            db.session.add(activity)
+            # Check if activity already exists
+            existing_activity = Activity.query.filter_by(
+                name=activity_data['name'],
+                city_id=activity_data.get('city_id')
+            ).first()
+            if not existing_activity:
+                activity = Activity(**activity_data)
+                db.session.add(activity)
+                activities_created += 1
         
         db.session.commit()
+        print(f"Activities ready: {activities_created} new activities created")
         
-        # Create sample trips
+        # Create sample trips (only if they don't exist)
+        trips_created = 0
         for i, user in enumerate(users[:3]):
-            start_date = date.today() + timedelta(days=30 + i*10)
-            end_date = start_date + timedelta(days=5)
-            
-            trip = Trip(
+            trip_name = f'Sample Trip {i+1}'
+            existing_trip = Trip.query.filter_by(
                 user_id=user.id,
-                name=f'Sample Trip {i+1}',
-                description=f'A wonderful trip planned by {user.username}',
-                start_date=start_date,
-                end_date=end_date
-            )
-            db.session.add(trip)
-            db.session.flush()
+                name=trip_name
+            ).first()
             
-            # Create budget
-            budget = Budget(
-                trip_id=trip.id,
-                transport_budget=500.0,
-                accommodation_budget=800.0,
-                activities_budget=400.0,
-                meals_budget=300.0,
-                other_budget=200.0
-            )
-            db.session.add(budget)
-            
-            # Add a city stop
-            city = cities[i % len(cities)]
-            stop = TripStop(
-                trip_id=trip.id,
-                city_id=city.id,
-                arrival_date=start_date,
-                departure_date=end_date,
-                order_index=1
-            )
-            db.session.add(stop)
-            db.session.flush()
-            
-            # Create itinerary days
-            current_date = start_date
-            day_num = 1
-            while current_date <= end_date:
-                day = ItineraryDay(
-                    trip_stop_id=stop.id,
-                    date=current_date,
-                    day_number=day_num
+            if not existing_trip:
+                start_date = date.today() + timedelta(days=30 + i*10)
+                end_date = start_date + timedelta(days=5)
+                
+                trip = Trip(
+                    user_id=user.id,
+                    name=trip_name,
+                    description=f'A wonderful trip planned by {user.username}',
+                    start_date=start_date,
+                    end_date=end_date
                 )
-                db.session.add(day)
-                current_date += timedelta(days=1)
-                day_num += 1
+                db.session.add(trip)
+                db.session.flush()
+                
+                # Create budget
+                budget = Budget(
+                    trip_id=trip.id,
+                    transport_budget=500.0,
+                    accommodation_budget=800.0,
+                    activities_budget=400.0,
+                    meals_budget=300.0,
+                    other_budget=200.0
+                )
+                db.session.add(budget)
+                
+                # Add a city stop
+                city = cities[i % len(cities)]
+                stop = TripStop(
+                    trip_id=trip.id,
+                    city_id=city.id,
+                    arrival_date=start_date,
+                    departure_date=end_date,
+                    order_index=1
+                )
+                db.session.add(stop)
+                db.session.flush()
+                
+                # Create itinerary days
+                current_date = start_date
+                day_num = 1
+                while current_date <= end_date:
+                    day = ItineraryDay(
+                        trip_stop_id=stop.id,
+                        date=current_date,
+                        day_number=day_num
+                    )
+                    db.session.add(day)
+                    current_date += timedelta(days=1)
+                    day_num += 1
+                
+                trips_created += 1
         
         db.session.commit()
-        print("Seed data created successfully!")
+        print(f"Trips ready: {trips_created} new trips created")
+        print("Seed data completed successfully!")
 
 if __name__ == '__main__':
     seed_data()
